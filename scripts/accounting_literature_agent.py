@@ -394,6 +394,126 @@ def stable_key(row: dict[str, Any]) -> str:
     return (row.get("doi") or row.get("id") or row.get("title") or "").lower()
 
 
+def paper_text(row: dict[str, Any]) -> str:
+    return "\n".join([
+        str(row.get("title") or ""),
+        str(row.get("abstract") or ""),
+        str(row.get("main_findings") or ""),
+    ])
+
+
+def has_deep_analysis(row: dict[str, Any]) -> bool:
+    return bool(row.get("llm_enrichment") or row.get("pdf_text_path"))
+
+
+def enriched_value(row: dict[str, Any], key: str, fallback: str = "not stated in available metadata") -> str:
+    enrichment = row.get("llm_enrichment") or {}
+    value = enrichment.get(key) if isinstance(enrichment, dict) else None
+    if value:
+        if isinstance(value, list):
+            return "; ".join(str(item) for item in value if item) or fallback
+        return str(value)
+    return str(row.get(key) or fallback)
+
+
+def analysis_status(row: dict[str, Any]) -> str:
+    if row.get("llm_enrichment") and row.get("pdf_text_path"):
+        return "enriched and full-text analyzed"
+    if row.get("llm_enrichment"):
+        return "enriched with LLM"
+    if row.get("pdf_text_path"):
+        return "full-text extracted"
+    return "metadata only"
+
+
+def first_sentence(value: str, fallback: str = "The available metadata is too thin to summarize the paper confidently.") -> str:
+    text = re.sub(r"\s+", " ", value or "").strip()
+    text = re.sub(r"^ABSTRACT\s+", "", text, flags=re.IGNORECASE)
+    if not text or text == "not stated in available metadata":
+        return fallback
+    sentences = re.split(r"(?<=[.!?])\s+", text)
+    return (sentences[0] if sentences else text)[:450]
+
+
+def has_substantive_metadata(row: dict[str, Any]) -> bool:
+    abstract = re.sub(r"\s+", " ", row.get("abstract") or "").strip().lower()
+    if len(abstract) < 80:
+        return False
+    thin_markers = ["earlyview", "early view", "current issue"]
+    return not any(marker in abstract for marker in thin_markers)
+
+
+def quality_reason_sentence(row: dict[str, Any]) -> str:
+    reasons = set(row.get("quality_reasons") or [])
+    venue = row.get("venue") or "the listed venue"
+    fields = ", ".join(row.get("fields") or ["accounting research"])
+    if row.get("source_tier") == "priority_journal":
+        return f"Its quality potential comes from venue fit: it appears in {venue}, one of the tracked priority venues, and connects to {fields}."
+    if "has DOI" in reasons and "has references" in reasons:
+        return f"Its quality potential is preliminary, but it has stronger bibliographic signals than a generic web hit because it has a DOI, references, and a clear connection to {fields}."
+    if "has abstract" in reasons:
+        return f"It is worth a quick look because the abstract gives enough signal to connect it to {fields}, though venue fit and design still need checking."
+    return f"It is a radar item only; confirm relevance before investing reading time."
+
+
+def radar_paragraph(row: dict[str, Any]) -> str:
+    title = row.get("title") or "Untitled paper"
+    fields = ", ".join(row.get("fields") or ["Unclassified"])
+    venue = row.get("venue") or "unknown venue"
+    date = row.get("publication_date") or "unknown date"
+    if has_substantive_metadata(row):
+        signal = first_sentence(row.get("main_findings") if row.get("main_findings") != "not stated in available metadata" else row.get("abstract"))
+        innovation = first_sentence(row.get("abstract") or row.get("main_findings") or "")
+    else:
+        signal = "The available metadata is too thin for a confident content summary."
+        innovation = "The possible innovation is not visible yet; treat this as a discovery lead until publisher metadata or PDF text is available."
+    reason = quality_reason_sentence(row)
+    return (
+        f"**{title}** ({venue}, {date}) is a rapid-radar item in {fields}. "
+        f"Metadata signal: {signal} "
+        f"Possible innovation: {innovation} "
+        f"{reason} Method, data, and identification are not asserted until PDF/full-text enrichment is available."
+    )
+
+
+def clean_library(args: argparse.Namespace) -> None:
+    policy = load_source_policy()
+    minimum_supplemental_score = int(policy.get("minimum_supplemental_quality_score", 4))
+    papers = read_jsonl(PAPERS_PATH)
+    kept: list[dict[str, Any]] = []
+    dropped: list[dict[str, Any]] = []
+
+    for paper in papers:
+        paper["data"] = infer_data(paper_text(paper))
+        if paper.get("source_tier") == "supplemental":
+            high_quality = int(paper.get("quality_score") or 0) >= minimum_supplemental_score
+            high_signal = is_high_signal_supplemental(paper, {}, policy)
+            if not high_quality or not high_signal:
+                dropped.append(paper)
+                continue
+        kept.append(paper)
+
+    kept_ids = {paper.get("id") for paper in kept if paper.get("id")}
+    references = [
+        row for row in read_jsonl(REFERENCES_PATH)
+        if not row.get("cited_by_paper_id") or row.get("cited_by_paper_id") in kept_ids
+    ]
+
+    if not args.dry_run:
+        write_jsonl(PAPERS_PATH, kept)
+        write_jsonl(REFERENCES_PATH, references)
+        build_report()
+
+    print(
+        f"{'Would keep' if args.dry_run else 'Kept'} {len(kept)} papers "
+        f"and {'would drop' if args.dry_run else 'dropped'} {len(dropped)} low-signal supplemental papers."
+    )
+    if dropped:
+        print("Dropped supplemental papers:")
+        for paper in dropped:
+            print(f"- {paper.get('title')}")
+
+
 def collect(args: argparse.Namespace) -> None:
     rules = load_field_rules()
     policy = load_source_policy()
@@ -479,6 +599,8 @@ def build_report() -> None:
     papers = read_jsonl(PAPERS_PATH)
     field_counts: dict[str, int] = {}
     tier_counts: dict[str, int] = {}
+    deep_papers = [paper for paper in papers if has_deep_analysis(paper)]
+    metadata_papers = [paper for paper in papers if not has_deep_analysis(paper)]
     for paper in papers:
         for field in paper.get("fields", []):
             field_counts[field] = field_counts.get(field, 0) + 1
@@ -490,6 +612,8 @@ def build_report() -> None:
         "",
         f"Generated at: {dt.datetime.now().isoformat(timespec='seconds')}",
         f"Total papers: {len(papers)}",
+        f"Enriched / full-text analyzed papers: {len(deep_papers)}",
+        f"Metadata-only radar papers: {len(metadata_papers)}",
         "",
         "## Field distribution",
         "",
@@ -501,29 +625,59 @@ def build_report() -> None:
     for tier, count in sorted(tier_counts.items(), key=lambda item: item[1], reverse=True):
         lines.append(f"- {tier}: {count}")
 
-    lines.extend(["", "## Recent papers", ""])
-    for paper in papers[:30]:
-        fields = ", ".join(paper.get("fields", []))
-        authors = ", ".join((paper.get("authors") or [])[:3])
-        if len(paper.get("authors") or []) > 3:
-            authors += " et al."
-        lines.extend([
-            f"### {paper.get('title')}",
-            "",
-            f"- Date: {paper.get('publication_date')}",
-            f"- Field: {fields}",
-            f"- Source tier: {paper.get('source_tier') or 'unknown'}",
-            f"- Quality score: {paper.get('quality_score', 'not available')}",
-            f"- Quality reasons: {', '.join(paper.get('quality_reasons') or []) or 'not available'}",
-            f"- Authors: {authors or 'not available'}",
-            f"- Venue: {paper.get('venue') or 'not available'}",
-            f"- Publisher: {paper.get('publisher') or 'not available'}",
-            f"- Method: {paper.get('method')}",
-            f"- Data: {paper.get('data')}",
-            f"- Main finding: {paper.get('main_findings')}",
-            f"- URL: {paper.get('landing_page_url') or paper.get('url')}",
-            "",
-        ])
+    lines.extend([
+        "",
+        "## Two-Layer Workflow",
+        "",
+        "Layer 1 is a rapid radar based only on OpenAlex, feeds, and bibliographic metadata. It flags potentially relevant papers in plain language but does not claim to know the method, data, or identification strategy. Layer 2 is the deep-reading layer: after a PDF is extracted and enriched, the report records the research question, method, data, identification strategy, findings, contribution, limitations, and future research ideas.",
+    ])
+
+    def append_deep_section(selected: list[dict[str, Any]], limit: int) -> None:
+        lines.extend(["", "## Layer 2: Deep Reading Enhanced Papers", ""])
+        if not selected:
+            lines.append("No papers have PDF/full-text or LLM enrichment yet. Use `pdf extract` plus `enrich` for papers selected from the radar.")
+            return
+        for paper in selected[:limit]:
+            fields = ", ".join(paper.get("fields", []))
+            authors = ", ".join((paper.get("authors") or [])[:3])
+            if len(paper.get("authors") or []) > 3:
+                authors += " et al."
+            lines.extend([
+                f"### {paper.get('title')}",
+                "",
+                f"- Date: {paper.get('publication_date')}",
+                f"- Field: {fields}",
+                f"- Source tier: {paper.get('source_tier') or 'unknown'}",
+                f"- Analysis status: {analysis_status(paper)}",
+                f"- Authors: {authors or 'not available'}",
+                f"- Venue: {paper.get('venue') or 'not available'}",
+                f"- Research question: {enriched_value(paper, 'research_question')}",
+                f"- Method: {enriched_value(paper, 'method')}",
+                f"- Data: {enriched_value(paper, 'data')}",
+                f"- Identification strategy: {enriched_value(paper, 'identification_strategy')}",
+                f"- Main findings: {enriched_value(paper, 'main_findings')}",
+                f"- Contribution: {enriched_value(paper, 'contribution')}",
+                f"- Limitations: {enriched_value(paper, 'limitations')}",
+                f"- Future research ideas: {enriched_value(paper, 'future_research_ideas')}",
+                f"- URL: {paper.get('landing_page_url') or paper.get('url')}",
+                "",
+            ])
+
+    def append_radar_section(selected: list[dict[str, Any]], limit: int) -> None:
+        lines.extend(["", "## Layer 1: Rapid Radar", ""])
+        if not selected:
+            lines.append("No metadata-only radar papers are waiting for screening.")
+            return
+        for paper in selected[:limit]:
+            lines.extend([
+                radar_paragraph(paper),
+                "",
+                f"URL: {paper.get('landing_page_url') or paper.get('url')}",
+                "",
+            ])
+
+    append_radar_section(metadata_papers, 30)
+    append_deep_section(deep_papers, 30)
 
     REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
     REPORT_PATH.write_text("\n".join(lines), encoding="utf-8")
@@ -563,6 +717,12 @@ def parse_args() -> argparse.Namespace:
 
     report_parser = subparsers.add_parser("report")
     report_parser.set_defaults(func=report)
+
+    maintain_parser = subparsers.add_parser("maintain")
+    maintain_sub = maintain_parser.add_subparsers(dest="maintain_command", required=True)
+    clean_parser = maintain_sub.add_parser("clean-library")
+    clean_parser.add_argument("--dry-run", action="store_true")
+    clean_parser.set_defaults(func=clean_library)
     return parser.parse_args()
 
 

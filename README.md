@@ -25,15 +25,71 @@ Output files:
 - `data/processed/references.jsonl`: referenced-work library
 - `data/processed/ideas.jsonl`: reading insights and research ideas
 - `data/processed/latest_report.md`: latest trend report
+- `data/processed/monthly_digest.md`: monthly email-ready digest with 30 recommended papers
+- `data/processed/weekly_deep_reading_queue.md`: weekly queue of papers to consider for PDF-based enrichment
+- `exports/radar/index.html`: local dashboard for reading the rapid radar
 
 ## Suggested Workflow
 
-1. Run `collect` weekly to gather recent accounting papers.
-2. Read `latest_report.md` to identify field-level trends.
-3. Select important papers for deep reading.
-4. Save reading insights with `ideas add`.
-5. Use a research/write/review/revise/finalize workflow for mature ideas.
-6. Run an independent hallucination audit before trusting generated drafts.
+1. Run the rapid radar monthly to collect new papers and generate the dashboard.
+2. Open `exports/radar/index.html` to scan field trends, source mix, and recommended papers.
+3. Use the weekly deep-reading queue to choose papers for PDF extraction.
+4. Extract PDF text and run OpenAI enrichment for selected papers.
+5. Save reading insights with `ideas add`.
+6. Use a research/write/review/revise/finalize workflow for mature ideas.
+7. Run an independent hallucination audit before trusting generated drafts.
+
+## Two-Layer Radar
+
+Layer 1 is a rapid radar. It uses OpenAlex, journal feeds, and bibliographic metadata to discover new papers. It intentionally does not claim to know the method, data, or identification strategy. Each paper is summarized in one readable paragraph that highlights the visible metadata signal, possible innovation, and why the paper may be worth screening.
+
+Layer 2 is deep-reading enrichment. After you download or import a PDF, the agent can extract text and use OpenAI enrichment to identify the research question, method, data, identification strategy, findings, contribution, limitations, and future research ideas.
+
+Generate the local radar dashboard:
+
+```bash
+python3 scripts/research_integrations.py export radar
+```
+
+Generate the monthly digest with 30 recommended papers:
+
+```bash
+python3 scripts/research_integrations.py digest monthly --limit 30
+```
+
+Generate a weekly deep-reading recommendation queue:
+
+```bash
+python3 scripts/research_integrations.py digest weekly-deep --limit 8
+```
+
+Run a full monthly cycle locally:
+
+```bash
+python3 scripts/research_integrations.py digest monthly --collect --clean --limit 30
+```
+
+Send a digest by email through SMTP:
+
+```bash
+export SMTP_HOST="smtp.example.com"
+export SMTP_PORT="587"
+export SMTP_USERNAME="your-username"
+export SMTP_PASSWORD="your-password-or-app-password"
+export SMTP_FROM="your@email.com"
+export EMAIL_RECIPIENT="recipient@email.com"
+python3 scripts/research_integrations.py digest monthly --limit 30 --send-email
+```
+
+The repository includes GitHub Actions workflows for monthly radar emails and weekly deep-reading queues. Configure these repository secrets before enabling email delivery:
+
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_USERNAME`
+- `SMTP_PASSWORD`
+- `SMTP_FROM`
+- `SMTP_USE_TLS`
+- `EMAIL_RECIPIENT`
 
 ## Collection Scope
 
