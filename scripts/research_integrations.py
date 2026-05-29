@@ -1317,12 +1317,20 @@ def send_email(subject: str, body: str, recipient: str | None = None) -> None:
     message["To"] = config["recipient"]
     message.set_content(body)
 
-    with smtplib.SMTP(config["host"], config["port"], timeout=30) as smtp:
-        if config["use_tls"]:
-            smtp.starttls(context=ssl_context())
-        if config["username"] and config["password"]:
-            smtp.login(config["username"], config["password"])
-        smtp.send_message(message)
+    try:
+        with smtplib.SMTP(config["host"], config["port"], timeout=30) as smtp:
+            if config["use_tls"]:
+                smtp.starttls(context=ssl_context())
+            if config["username"] and config["password"]:
+                smtp.login(config["username"], config["password"])
+            smtp.send_message(message)
+    except smtplib.SMTPAuthenticationError as exc:
+        raise SystemExit(
+            "SMTP authentication failed. For Outlook/Microsoft accounts, use an app password "
+            "and confirm that SMTP AUTH is allowed for the mailbox."
+        ) from exc
+    except smtplib.SMTPException as exc:
+        raise SystemExit(f"SMTP send failed: {exc}") from exc
     print(f"Sent email digest to {config['recipient']}.")
 
 

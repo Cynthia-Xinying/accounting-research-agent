@@ -37,6 +37,7 @@ jobs:
             --limit 30
 
       - name: Email monthly digest
+        continue-on-error: true
         env:
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
           SMTP_PORT: ${{ secrets.SMTP_PORT }}
@@ -50,11 +51,13 @@ jobs:
             echo "SMTP secrets are not configured; skipping email."
             exit 0
           fi
+          echo "Attempting to send email. If this step fails, check whether the mailbox allows SMTP AUTH and app passwords."
           python3 scripts/research_integrations.py digest email \
             --path data/processed/monthly_digest.md \
             --subject "Monthly Accounting Research Digest"
 
       - name: Upload generated reports
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: monthly-accounting-radar
