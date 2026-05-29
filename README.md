@@ -91,6 +91,103 @@ The repository includes GitHub Actions workflows for monthly radar emails and we
 - `SMTP_USE_TLS`
 - `EMAIL_RECIPIENT`
 
+## Live Dashboard with GitHub Pages
+
+The radar dashboard can be published as a GitHub Pages site. The workflow in `.github/workflows/pages-radar.yml` generates `exports/radar/index.html` in GitHub Actions and deploys it to Pages.
+
+To enable the live dashboard:
+
+1. Push this repository to GitHub.
+2. Open the repository on GitHub.
+3. Go to `Settings` -> `Pages`.
+4. Under `Build and deployment`, set `Source` to `GitHub Actions`.
+5. Go to `Actions` -> `Publish Radar Dashboard`.
+6. Click `Run workflow`.
+
+After the workflow succeeds, GitHub will show the published URL. It should look similar to:
+
+```text
+https://cynthia-xinying.github.io/accounting-research-agent/
+```
+
+Use this link when showing the project to advisors or collaborators. The dashboard is a reading interface, not the raw database: it shows macro trends, field/source distributions, recommended papers, and rapid-radar cards.
+
+## For Users
+
+This project is designed to be forked and customized. A new user can run their own accounting research radar without editing the core Python code.
+
+### 1. Fork the repository
+
+Click `Fork` on GitHub, then clone the fork locally:
+
+```bash
+git clone https://github.com/YOUR-USERNAME/accounting-research-agent.git
+cd accounting-research-agent
+```
+
+### 2. Customize sources and fields
+
+Edit these configuration files:
+
+- `config/source_policy.json`: priority journals, supplemental sources, and quality rules
+- `config/accounting_fields.yml`: field classification keywords
+- `config/journal_feeds.json`: publisher RSS or table-of-contents feeds
+- `config/ssrn_queries.json`: SSRN-style search queries
+
+### 3. Run the radar locally
+
+```bash
+python3 scripts/research_integrations.py digest monthly --collect --clean --limit 30
+python3 scripts/research_integrations.py export radar
+```
+
+Then open:
+
+```text
+exports/radar/index.html
+```
+
+### 4. Configure email delivery
+
+Add these GitHub Actions secrets if you want automated email digests:
+
+```text
+SMTP_HOST
+SMTP_PORT
+SMTP_USERNAME
+SMTP_PASSWORD
+SMTP_FROM
+SMTP_USE_TLS
+EMAIL_RECIPIENT
+```
+
+For Gmail, use an app password rather than the normal login password:
+
+```text
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USE_TLS=true
+```
+
+### 5. Enable scheduled workflows
+
+Use the GitHub `Actions` tab:
+
+- `Monthly Accounting Research Radar`: monthly collection, digest generation, and optional email
+- `Weekly Deep Reading Queue`: weekly PDF-enrichment recommendation queue
+- `Publish Radar Dashboard`: deploys the radar dashboard to GitHub Pages
+
+### 6. Move from radar to deep reading
+
+The first layer is metadata-only discovery. For papers worth reading closely, download the PDF and run:
+
+```bash
+python3 scripts/research_integrations.py pdf extract --path paper.pdf --paper-id "PAPER_ID_OR_DOI"
+python3 scripts/research_integrations.py enrich --limit 5
+```
+
+The enriched layer is where the agent records the research question, method, data, identification strategy, findings, contribution, limitations, and future research ideas.
+
 ## Collection Scope
 
 The collection policy lives in `config/source_policy.json`. By default, the agent prioritizes these journals:

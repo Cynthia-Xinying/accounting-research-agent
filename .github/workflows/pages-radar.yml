@@ -1,0 +1,59 @@
+name: Publish Radar Dashboard
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 10 1 * *"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publish-radar:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Compute radar window
+        id: window
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import datetime as dt
+          print("from_date=" + (dt.date.today() - dt.timedelta(days=31)).isoformat())
+          PY
+
+      - name: Generate radar dashboard
+        run: |
+          python3 scripts/research_integrations.py digest monthly \
+            --from-date "${{ steps.window.outputs.from_date }}" \
+            --collect \
+            --clean \
+            --limit 30
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload radar dashboard
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: exports/radar
+
+      - name: Deploy radar dashboard
+        id: deployment
+        uses: actions/deploy-pages@v4
