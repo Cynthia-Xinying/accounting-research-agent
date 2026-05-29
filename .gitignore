@@ -10,10 +10,13 @@ data/processed/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 
+# Generated exports
+exports/*
+!exports/.gitkeep
+
 # Secrets and local config
 .env
 *.log
 
 # macOS
 .DS_Store
-

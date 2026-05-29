@@ -1,40 +1,130 @@
 # Accounting Research Agent
 
-这是一个面向会计研究的文献雷达与研究想法整理脚手架。第一版目标是：
+An accounting research literature radar and idea-management scaffold. The first version is designed to:
 
-- 持续收集会计各领域最新论文
-- 自动按研究板块分类
-- 提取方法、数据、主要结论、引用文献等结构化信息
-- 将新文献与旧文献库增量合并
-- 保存阅读灵感和论文 idea，方便后续写作
-- 为 `academic-research-skills`、`gstock`、`superpower` 这类研究写作与核查工具预留监督流程
+- Collect recent papers across accounting research domains
+- Prioritize high-quality accounting journals
+- Classify papers by accounting field
+- Extract structured metadata about method, data, main findings, and references
+- Incrementally merge new papers into the existing library
+- Store reading insights and research ideas for later writing
+- Leave room for `academic-research-skills`, `gstock`, and `superpower` style review workflows
 
-## 快速开始
+## Quick Start
 
 ```bash
 python3 scripts/accounting_literature_agent.py collect --from-date 2026-01-01 --max-results 50
-python3 scripts/accounting_literature_agent.py ideas add --title "审计 AI 披露与风险评估" --note "可以比较 Big 4 与非 Big 4 审计师对 AI 风险披露的反应。"
+python3 scripts/accounting_literature_agent.py collect --from-date 2026-01-01 --max-results 50 --no-include-supplemental
+python3 scripts/accounting_literature_agent.py ideas add --title "AI disclosures and audit risk assessment" --note "Compare how Big 4 and non-Big 4 auditors respond to AI-related risk disclosures."
 python3 scripts/accounting_literature_agent.py report
 ```
 
-输出文件：
+Output files:
 
-- `data/processed/papers.jsonl`: 去重后的论文库
-- `data/processed/references.jsonl`: 被引用论文库
-- `data/processed/ideas.jsonl`: 阅读灵感与研究 idea
-- `data/processed/latest_report.md`: 最近趋势报告
+- `data/processed/papers.jsonl`: deduplicated paper library
+- `data/processed/references.jsonl`: referenced-work library
+- `data/processed/ideas.jsonl`: reading insights and research ideas
+- `data/processed/latest_report.md`: latest trend report
 
-## 建议工作流
+## Suggested Workflow
 
-1. 每周运行一次 `collect`，收集最新会计论文。
-2. 先读 `latest_report.md`，了解各板块趋势。
-3. 选择重点论文精读，把灵感用 `ideas add` 记录下来。
-4. 对成熟 idea 使用 research/write/review/revise/finalize 写作流水线。
-5. 使用独立核查流程检查引用、数据、方法描述和结论是否幻觉。
+1. Run `collect` weekly to gather recent accounting papers.
+2. Read `latest_report.md` to identify field-level trends.
+3. Select important papers for deep reading.
+4. Save reading insights with `ideas add`.
+5. Use a research/write/review/revise/finalize workflow for mature ideas.
+6. Run an independent hallucination audit before trusting generated drafts.
 
-## 会计研究板块
+## Collection Scope
 
-分类规则在 `config/accounting_fields.yml` 中。当前覆盖：
+The collection policy lives in `config/source_policy.json`. By default, the agent prioritizes these journals:
+
+- Accounting and Business Research
+- Accounting and Finance
+- Accounting Horizons
+- Behavioral Research in Accounting
+- International Journal of Accounting, Auditing and Performance Evaluation
+- Journal of Accounting & Organizational Change
+- Journal of Accounting, Auditing and Finance
+- Journal of International Accounting Research
+- Qualitative Research in Accounting and Management
+- Contemporary Accounting Research
+- European Accounting Review
+- Auditing: A Journal of Practice and Theory
+
+The agent can also collect supplemental papers from SSRN, AAA-related sources, and broader accounting searches. Supplemental papers must pass a minimum quality score. Current quality signals include:
+
+- Abstract available
+- DOI available
+- Referenced works available
+- Accounting-field relevance
+- Recognized supplemental source
+- Early citation signal for recent papers
+
+To collect only priority-journal papers:
+
+```bash
+python3 scripts/accounting_literature_agent.py collect --no-include-supplemental
+```
+
+## Optional Integrations
+
+The optional integration CLI is `scripts/research_integrations.py`. It uses the same paper library as the core collector.
+
+Harvest publisher RSS or table-of-contents feeds:
+
+```bash
+python3 scripts/research_integrations.py feeds harvest --max-items 20
+```
+
+Search SSRN and optionally download PDFs when a direct PDF link is available:
+
+```bash
+python3 scripts/research_integrations.py ssrn search --query "audit quality" --max-results 10
+python3 scripts/research_integrations.py ssrn search --query "audit quality" --max-results 10 --download-pdfs
+```
+
+Import a BibTeX file:
+
+```bash
+python3 scripts/research_integrations.py bibtex import --path references.bib
+```
+
+Sync a Zotero library or collection:
+
+```bash
+export ZOTERO_API_KEY="your-zotero-api-key"
+python3 scripts/research_integrations.py zotero sync --library-type user --library-id 123456 --limit 50
+python3 scripts/research_integrations.py zotero sync --library-type group --library-id 123456 --collection-key ABCDEF --limit 50
+```
+
+Enrich paper records with an OpenAI model:
+
+```bash
+export OPENAI_API_KEY="your-openai-api-key"
+export OPENAI_MODEL="your-selected-model"
+python3 scripts/research_integrations.py enrich --limit 5
+```
+
+Extract text from a local PDF:
+
+```bash
+python3 scripts/research_integrations.py pdf extract --path paper.pdf
+python3 scripts/research_integrations.py pdf extract --path paper.pdf --paper-id "https://openalex.org/W123"
+```
+
+Export the library for Obsidian or Notion:
+
+```bash
+python3 scripts/research_integrations.py export obsidian
+python3 scripts/research_integrations.py export notion
+```
+
+PDF parsing requires either `pypdf` or `PyPDF2`. OpenAI enrichment requires `OPENAI_API_KEY` and a model selected by you through `OPENAI_MODEL` or `--model`.
+
+## Accounting Fields
+
+Field classification rules live in `config/accounting_fields.yml`. Current fields:
 
 - Financial Accounting
 - Auditing
@@ -47,15 +137,12 @@ python3 scripts/accounting_literature_agent.py report
 - Disclosure
 - Regulation and Standard Setting
 
-## 下一步
+## Next Steps
 
-第一版使用 OpenAlex 公共元数据，适合建立趋势雷达。更强版本可以继续接入：
+Version 0.1 uses OpenAlex public metadata, which is useful for building a trend radar. Future versions can add:
 
-- SSRN 搜索与下载
-- 期刊官网 RSS 或 TOC
-- Google Scholar 手动导入
-- Zotero / BibTeX 同步
-- OpenAI API 深度摘要与表格化抽取
-- PDF 全文解析
-- 自动生成 Obsidian 或 Notion 知识库
-
+- More robust SSRN metadata extraction
+- Publisher-specific table-of-contents parsers for journals without RSS feeds
+- Google Scholar manual import helpers
+- Claim-level citation audits for generated literature reviews
+- A scheduled weekly collection workflow

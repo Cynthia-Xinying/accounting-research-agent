@@ -1,0 +1,38 @@
+{
+  "priority_journals": [
+    "Accounting and Business Research",
+    "Accounting and Finance",
+    "Accounting Horizons",
+    "Behavioral Research in Accounting",
+    "International Journal of Accounting, Auditing and Performance Evaluation",
+    "Journal of Accounting & Organizational Change",
+    "Journal of Accounting, Auditing and Finance",
+    "Journal of International Accounting Research",
+    "Qualitative Research in Accounting and Management",
+    "Contemporary Accounting Research",
+    "European Accounting Review",
+    "Auditing: A Journal of Practice and Theory"
+  ],
+  "supplemental_sources": [
+    "SSRN Electronic Journal",
+    "Social Science Research Network",
+    "American Accounting Association"
+  ],
+  "supplemental_search_terms": [
+    "accounting SSRN",
+    "financial reporting SSRN",
+    "auditing SSRN",
+    "tax avoidance SSRN",
+    "AAA accounting research",
+    "American Accounting Association accounting"
+  ],
+  "minimum_supplemental_quality_score": 4,
+  "quality_rules": {
+    "has_abstract": 2,
+    "has_doi": 1,
+    "has_referenced_works": 1,
+    "accounting_relevant": 2,
+    "source_is_supplemental": 1,
+    "recent_citation_signal": 1
+  }
+}

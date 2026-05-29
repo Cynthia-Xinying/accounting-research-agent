@@ -1,0 +1,77 @@
+{
+  "journals": [
+    {
+      "name": "Accounting and Business Research",
+      "publisher": "Taylor & Francis",
+      "toc_url": "https://www.tandfonline.com/toc/rabr20/current",
+      "feed_url": "https://www.tandfonline.com/action/showFeed?jc=rabr20&type=etoc&feed=rss"
+    },
+    {
+      "name": "Accounting and Finance",
+      "publisher": "Wiley",
+      "toc_url": "https://onlinelibrary.wiley.com/toc/1467629x/current",
+      "feed_url": "https://onlinelibrary.wiley.com/action/showFeed?jc=1467629x&type=etoc&feed=rss"
+    },
+    {
+      "name": "Accounting Horizons",
+      "publisher": "American Accounting Association",
+      "toc_url": "https://publications.aaahq.org/accounting-horizons/issue",
+      "feed_url": null
+    },
+    {
+      "name": "Behavioral Research in Accounting",
+      "publisher": "American Accounting Association",
+      "toc_url": "https://publications.aaahq.org/bria/issue",
+      "feed_url": null
+    },
+    {
+      "name": "International Journal of Accounting, Auditing and Performance Evaluation",
+      "publisher": "Inderscience",
+      "toc_url": "https://www.inderscience.com/jhome.php?jcode=ijaape",
+      "feed_url": null
+    },
+    {
+      "name": "Journal of Accounting & Organizational Change",
+      "publisher": "Emerald",
+      "toc_url": "https://www.emerald.com/insight/publication/issn/1832-5912",
+      "feed_url": null
+    },
+    {
+      "name": "Journal of Accounting, Auditing and Finance",
+      "publisher": "Sage",
+      "toc_url": "https://journals.sagepub.com/toc/JAF/current",
+      "feed_url": "https://journals.sagepub.com/action/showFeed?jc=jafa&type=etoc&feed=rss"
+    },
+    {
+      "name": "Journal of International Accounting Research",
+      "publisher": "American Accounting Association",
+      "toc_url": "https://publications.aaahq.org/jiar/issue",
+      "feed_url": null
+    },
+    {
+      "name": "Qualitative Research in Accounting and Management",
+      "publisher": "Emerald",
+      "toc_url": "https://www.emerald.com/insight/publication/issn/1176-6093",
+      "feed_url": null
+    },
+    {
+      "name": "Contemporary Accounting Research",
+      "publisher": "Wiley",
+      "toc_url": "https://onlinelibrary.wiley.com/toc/19113846/current",
+      "feed_url": "https://onlinelibrary.wiley.com/action/showFeed?jc=19113846&type=etoc&feed=rss"
+    },
+    {
+      "name": "European Accounting Review",
+      "publisher": "Taylor & Francis",
+      "toc_url": "https://www.tandfonline.com/toc/rear20/current",
+      "feed_url": "https://www.tandfonline.com/action/showFeed?jc=rear20&type=etoc&feed=rss"
+    },
+    {
+      "name": "Auditing: A Journal of Practice and Theory",
+      "publisher": "American Accounting Association",
+      "toc_url": "https://publications.aaahq.org/ajpt/issue",
+      "feed_url": null
+    }
+  ]
+}
+
