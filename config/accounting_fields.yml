@@ -1,0 +1,90 @@
+# Simple keyword rules for first-pass classification.
+# Keep this file editable: add terms you repeatedly see in your target journals.
+
+Financial Accounting:
+  - financial reporting
+  - earnings
+  - accrual
+  - fair value
+  - accounting quality
+  - restatement
+  - conservatism
+  - revenue recognition
+
+Auditing:
+  - audit
+  - auditor
+  - audit quality
+  - internal control
+  - key audit matter
+  - going concern
+  - assurance
+
+Tax:
+  - tax
+  - taxation
+  - tax avoidance
+  - tax aggressiveness
+  - book-tax
+  - effective tax rate
+
+Management Accounting:
+  - management accounting
+  - budgeting
+  - performance measurement
+  - compensation contract
+  - cost accounting
+  - incentive
+
+Corporate Governance:
+  - corporate governance
+  - board
+  - director
+  - ownership
+  - executive compensation
+  - institutional investor
+
+ESG and Sustainability:
+  - esg
+  - sustainability
+  - climate
+  - carbon
+  - csr
+  - environmental
+  - social responsibility
+
+Capital Markets:
+  - capital market
+  - analyst
+  - investor
+  - stock price
+  - market reaction
+  - liquidity
+  - cost of capital
+
+Accounting Information Systems:
+  - information system
+  - xbrl
+  - blockchain
+  - artificial intelligence
+  - machine learning
+  - cybersecurity
+  - data analytics
+
+Disclosure:
+  - disclosure
+  - voluntary disclosure
+  - mandatory disclosure
+  - textual analysis
+  - narrative
+  - readability
+
+Regulation and Standard Setting:
+  - regulation
+  - standard setting
+  - sec
+  - fasb
+  - ifrs
+  - gaap
+  - enforcement
+
