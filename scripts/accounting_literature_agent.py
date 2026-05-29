@@ -145,20 +145,20 @@ def infer_method(text: str) -> str:
 def infer_data(text: str) -> str:
     lower = text.lower()
     candidates = [
-        "compustat",
-        "crsp",
-        "audit analytics",
-        "ibes",
-        "sec",
-        "edgar",
-        "wrds",
-        "boardex",
-        "iss",
-        "ravenpack",
-        "sustainalytics",
-        "refinitiv",
+        ("compustat", r"\bcompustat\b"),
+        ("crsp", r"\bcrsp\b"),
+        ("audit analytics", r"\baudit analytics\b"),
+        ("ibes", r"\bibes\b|\bi/b/e/s\b"),
+        ("sec", r"\bsec\b|securities and exchange commission"),
+        ("edgar", r"\bedgar\b"),
+        ("wrds", r"\bwrds\b"),
+        ("boardex", r"\bboardex\b"),
+        ("iss", r"\biss\b|institutional shareholder services"),
+        ("ravenpack", r"\bravenpack\b"),
+        ("sustainalytics", r"\bsustainalytics\b"),
+        ("refinitiv", r"\brefinitiv\b"),
     ]
-    hits = [name for name in candidates if name in lower]
+    hits = [name for name, pattern in candidates if re.search(pattern, lower)]
     return ", ".join(hits) if hits else "not stated in available metadata"
 
 
@@ -222,6 +222,73 @@ def normalize_name(value: str | None) -> str:
 def source_matches(value: str, candidates: list[str]) -> bool:
     normalized = normalize_name(value)
     return any(normalize_name(candidate) in normalized for candidate in candidates)
+
+
+def has_phrase(text: str, phrase: str) -> bool:
+    pattern = r"\b" + re.escape(phrase.lower()).replace(r"\ ", r"\s+") + r"\b"
+    return bool(re.search(pattern, text.lower()))
+
+
+def is_high_signal_supplemental(row: dict[str, Any], work: dict[str, Any], policy: dict[str, Any]) -> bool:
+    """Keep supplemental searches focused on accounting research, not broad keyword neighbors."""
+    fields = set(row.get("fields") or [])
+    if not fields or fields == {"Unclassified"}:
+        return False
+
+    text = "\n".join([
+        str(row.get("title") or ""),
+        str(row.get("abstract") or ""),
+        str(row.get("venue") or ""),
+    ])
+    core_accounting_terms = [
+        "accounting",
+        "accountant",
+        "audit",
+        "auditor",
+        "assurance",
+        "financial reporting",
+        "financial statement",
+        "earnings management",
+        "earnings quality",
+        "accrual",
+        "book-tax",
+        "tax",
+        "income tax",
+        "value-added tax",
+        "tax avoidance",
+        "tax aggressiveness",
+        "tax compliance",
+        "tax practice",
+        "tax rate",
+        "taxpayer",
+        "management accounting",
+        "cost accounting",
+        "internal control",
+        "disclosure",
+        "xbrl",
+        "gaap",
+        "ifrs",
+        "fasb",
+    ]
+    if any(has_phrase(text, term) for term in core_accounting_terms):
+        return True
+
+    supplemental_sources = policy.get("supplemental_sources", [])
+    recognized_source = (
+        source_matches(source_display_name(work), supplemental_sources)
+        or source_matches(source_publisher(work), supplemental_sources)
+    )
+    accounting_specific_fields = {
+        "Financial Accounting",
+        "Auditing",
+        "Tax",
+        "Management Accounting",
+        "Accounting Information Systems",
+    }
+    if recognized_source and fields.intersection(accounting_specific_fields):
+        return True
+
+    return False
 
 
 def resolve_openalex_source_ids(journal_names: list[str]) -> dict[str, str]:
@@ -362,9 +429,13 @@ def collect(args: argparse.Namespace) -> None:
             if source_tier == "priority_journal" and not source_matches(source_display_name(work), priority_journals):
                 continue
             row = normalize_work(work, rules, policy, source_tier)
-            if source_tier == "supplemental" and row["quality_score"] < minimum_supplemental_score:
-                skipped_supplemental += 1
-                continue
+            if source_tier == "supplemental":
+                if row["quality_score"] < minimum_supplemental_score:
+                    skipped_supplemental += 1
+                    continue
+                if not is_high_signal_supplemental(row, work, policy):
+                    skipped_supplemental += 1
+                    continue
             key = stable_key(row)
             if not key or key in by_key:
                 continue
